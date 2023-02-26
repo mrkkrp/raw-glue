@@ -30,16 +30,14 @@
         };
         craneLib = crane.lib.${system}.overrideToolchain rustToolchain;
         src = craneLib.cleanCargoSource ./.;
-        sharedBuildInputs = [
-          pkgs.libraw.dev
-        ];
-        sharedNativeBuildInputs = [
-          pkgs.pkg-config
-        ];
         commonArgs = {
           inherit src;
-          buildInputs = sharedBuildInputs;
-          nativeBuildInputs = sharedNativeBuildInputs;
+          buildInputs = [
+            pkgs.libraw.dev
+          ];
+          nativeBuildInputs = [
+            pkgs.pkg-config
+          ];
         };
         cargoArtifacts = craneLib.buildDepsOnly commonArgs;
         my-crate = craneLib.buildPackage (commonArgs // {
@@ -64,15 +62,10 @@
           drv = my-crate;
         };
         devShells.default = pkgs.mkShell {
-          inputsFrom = builtins.attrValues self.checks;
-          buildInputs = sharedBuildInputs;
-          nativeBuildInputs = [
-            pkgs.cargo
-            pkgs.clippy
+          inputsFrom = builtins.attrValues self.checks.${system};
+          buildInputs = [
             pkgs.rust-analyzer
-            pkgs.rustc
-            pkgs.rustfmt
-          ] ++ sharedNativeBuildInputs;
+          ];
         };
       }
     );
