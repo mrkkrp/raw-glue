@@ -1,10 +1,13 @@
 [package]
 name = "raw-glue"
+description = "Stitch RAW files and output the result in the TIFF format"
 version = "0.1.0"
 edition = "2021"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+required-features = ["derive"]
 
 [dependencies]
-clap = "4.1.6"
+clap = "4.2.1"
+clap_derive = "4.2.0"
 libc = "0.2.140"
+rayon = "1.7.0"
+tempfile = "3.5.0"
