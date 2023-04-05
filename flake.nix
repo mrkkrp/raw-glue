@@ -14,7 +14,7 @@
   };
 
   outputs = { self, nixpkgs, flake-utils, rust-overlay, crane }:
-    flake-utils.lib.eachDefaultSystem (system:
+    flake-utils.lib.eachSystem ["aarch64-linux" "x86_64-linux"] (system:
       let
         overlays = [ (import rust-overlay) ];
         pkgs = import nixpkgs {
@@ -30,37 +30,11 @@
         };
         craneLib = crane.lib.${system}.overrideToolchain rustToolchain;
         src = craneLib.cleanCargoSource ./.;
-        libpano = pkgs.stdenv.mkDerivation {
-          pname = "libpano";
-          version = "13";
-          src = pkgs.fetchFromGitHub {
-            owner = "mrkkrp";
-            repo = "libpano13";
-            rev = "6b65f1ff2b6ee855db3337108529e73f8b0baabe";
-            sha256 = "sha256-60H512NnrrN2VAU87jlguHA3hvkvoYiH8zFJjsH75PA=";
-          };
-          outputs = [ "out" "lib" "dev" ];
-          buildInputs = with pkgs; [
-            libjpeg
-            libpng
-            libtiff
-          ];
-          nativeBuildInputs = with pkgs; [
-            autoreconfHook
-            pkg-config
-          ];
-          meta = with pkgs.lib; {
-            description = "The cross-platform library behind the Hugin photo stitcher";
-            homepage = "https://panotools.sourceforge.net/";
-            license = licenses.gpl2;
-            platforms = platforms.unix;
-          };
-        };
         commonArgs = {
           inherit src;
           buildInputs = [
+            pkgs.hugin
             pkgs.libraw.dev
-            libpano.dev
           ];
           nativeBuildInputs = [
             pkgs.pkg-config
