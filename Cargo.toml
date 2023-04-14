@@ -6,6 +6,7 @@ edition = "2021"
 required-features = ["derive"]
 
 [dependencies]
+chrono = "0.4.24"
 clap = "4.2.1"
 clap_derive = "4.2.0"
 libc = "0.2.140"

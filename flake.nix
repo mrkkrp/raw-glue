@@ -44,6 +44,15 @@
         my-crate = craneLib.buildPackage (commonArgs // {
           inherit cargoArtifacts;
         });
+        my-crate-wrapped = pkgs.symlinkJoin {
+          name = "raw-glue";
+          paths = [ my-crate ];
+          buildInputs = [ pkgs.makeWrapper ];
+          postBuild = ''
+            wrapProgram $out/bin/raw-glue \
+              --prefix PATH : ${pkgs.lib.makeBinPath [ pkgs.hugin ]}
+          '';
+        };
       in
       {
         checks = {
@@ -58,9 +67,9 @@
             inherit src;
           };
         };
-        packages.default = my-crate;
+        packages.default = my-crate-wrapped;
         apps.default = flake-utils.lib.mkApp {
-          drv = my-crate;
+          drv = my-crate-wrapped;
         };
         devShells.default = pkgs.mkShell {
           inputsFrom = builtins.attrValues self.checks.${system};
