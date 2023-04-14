@@ -4,7 +4,7 @@ use std::process::Command;
 
 pub fn pto_gen(project_pto: &Path, input_tiffs: &Vec<PathBuf>) {
     let mut command = Command::new("pto_gen");
-    command.arg("-o");
+    command.args(["--projection=0", "--fov=1", "-o"]);
     command.arg(project_pto);
     command.args(input_tiffs);
     let status = command.status().expect("failed to run pto_gen");
