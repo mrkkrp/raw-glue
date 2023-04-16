@@ -50,7 +50,13 @@ pub fn autooptimiser(project_pto: &Path) {
 
 pub fn pano_modify(project_pto: &Path) {
     let mut command = Command::new("pano_modify");
-    command.args(["--canvas=AUTO", "--crop=AUTO", "-o"]);
+    command.args([
+        "--canvas=AUTO",
+        "--crop=AUTO",
+        "--blender=ENBLEND",
+        "--ldr-compression=DEFLATE",
+        "-o",
+    ]);
     command.arg(project_pto);
     command.arg(project_pto);
     let status = command.status().expect("failed to run pano_modify");
