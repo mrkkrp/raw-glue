@@ -40,15 +40,24 @@ fn main() {
             output_path
         })
         .collect();
+    // See https://wiki.panotools.org/Panorama_scripting_in_a_nutshell
     let project_pto = tmp_dir.path().join("project.pto");
-    hugin::pto_gen(&project_pto, &input_tiffs);
-    hugin::cpfind(&project_pto);
-    hugin::cpclean(&project_pto);
-    hugin::linefind(&project_pto);
-    hugin::autooptimiser(&project_pto);
-    hugin::pano_modify(&project_pto);
+    hugin::pto_gen(&project_pto, &input_tiffs, ["--projection=0", "--fov=1"]);
+    hugin::cpfind(&project_pto, ["--multirow", "--celeste"]);
+    hugin::cpclean(&project_pto, Vec::<&str>::from([]));
+    hugin::linefind(&project_pto, Vec::<&str>::from([]));
+    hugin::autooptimiser(&project_pto, ["-a", "-m", "-s"]);
+    hugin::pano_modify(
+        &project_pto,
+        [
+            "--canvas=AUTO",
+            "--crop=AUTO",
+            "--blender=ENBLEND",
+            "--ldr-compression=DEFLATE", // better than LZW
+        ],
+    );
     let output_filename = output_filename();
-    hugin::executor(&project_pto, &output_filename)
+    hugin::executor(&project_pto, &output_filename, ["--stitching"])
 }
 
 /// Generate name for the output `.tiff` file based on current local time.
