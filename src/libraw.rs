@@ -3,12 +3,41 @@
 
 use libc::{c_char, c_int, c_uint};
 use std::ffi::CString;
+use std::fmt::{self, Display};
 use std::os::unix::ffi::OsStrExt;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 /// An image in RAW format.
 pub struct RawImage {
     libraw_data: *const LibRawData,
+}
+
+/// Libraw-related errors.
+#[derive(Debug)]
+pub enum Error {
+    InitNullPointer,
+    FailedToOpen(PathBuf),
+    FailedToUnpack(PathBuf),
+    FailedToProcess(PathBuf),
+    FailedToSaveTiff(PathBuf),
+}
+
+impl Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Error::InitNullPointer => write!(f, "libraw_init returned a null pointer"),
+            Error::FailedToOpen(path) => write!(f, "libraw failed to open file {}", path.display()),
+            Error::FailedToUnpack(path) => {
+                write!(f, "libraw failed to unpack file {}", path.display())
+            }
+            Error::FailedToProcess(path) => {
+                write!(f, "libraw failed to process file {}", path.display())
+            }
+            Error::FailedToSaveTiff(path) => {
+                write!(f, "libraw failed to save TIFF to {}", path.display())
+            }
+        }
+    }
 }
 
 #[repr(C)]
@@ -19,38 +48,37 @@ struct LibRawData {
 
 impl RawImage {
     /// Create a new `RawImage` by loading it from a file.
-    pub fn new(filename: &Path) -> RawImage {
+    pub fn new(filename: &Path) -> Result<RawImage, Error> {
         let filename_cstring = CString::new(filename.as_os_str().as_bytes()).unwrap();
-        let filename_str = filename.to_str().unwrap();
         let libraw_data = unsafe { libraw_init(0) };
         if libraw_data.is_null() {
-            panic!("lib_raw_init returned a null pointer")
+            return Err(Error::InitNullPointer);
         }
         let result = RawImage { libraw_data };
         let open_file_status = unsafe { libraw_open_file(libraw_data, filename_cstring.as_ptr()) };
         if open_file_status != 0 {
-            panic!("failed to open file: {}", filename_str)
+            return Err(Error::FailedToOpen(filename.to_owned()));
         }
         let unpack_status = unsafe { libraw_unpack(libraw_data) };
         if unpack_status != 0 {
-            panic!("failed to unpack file: {}", filename_str)
+            return Err(Error::FailedToUnpack(filename.to_owned()));
         }
         let dcraw_process_status = unsafe { libraw_dcraw_process(libraw_data) };
         if dcraw_process_status != 0 {
-            panic!("failed to process file: {}", filename_str)
+            return Err(Error::FailedToProcess(filename.to_owned()));
         }
-        result
+        Ok(result)
     }
 
     /// Save the given RAW image as a TIFF file.
-    pub fn save_tiff(&self, filename: &Path) {
+    pub fn save_tiff(&self, filename: &Path) -> Result<(), Error> {
         let filename_cstring = CString::new(filename.as_os_str().as_bytes()).unwrap();
-        let filename_str = filename.to_str().unwrap();
         let status =
             unsafe { libraw_dcraw_ppm_tiff_writer(self.libraw_data, filename_cstring.as_ptr()) };
         if status != 0 {
-            panic!("failed to save tiff to {}", filename_str)
+            return Err(Error::FailedToSaveTiff(filename.to_owned()));
         }
+        Ok(())
     }
 }
 
