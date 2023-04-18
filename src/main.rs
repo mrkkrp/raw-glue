@@ -21,6 +21,9 @@ fn main() {
         eprintln!("error: at least one input file must be provided");
         process::exit(1);
     }
+    // A temporary directory is useful for both storing temporary TIFF
+    // versions of the source images and as the working directory for
+    // calling Hugin tools later.
     let tmp_dir: TempDir = match Builder::new().prefix("raw-glue").tempdir() {
         Err(_) => {
             eprintln!("error: at least one input file must be provided");
@@ -28,6 +31,7 @@ fn main() {
         }
         Ok(x) => x,
     };
+    // Convert to TIFF in parallel.
     let input_tiffs: Vec<PathBuf> = args
         .inputs
         .par_iter()
@@ -42,6 +46,9 @@ fn main() {
         .collect();
     // See https://wiki.panotools.org/Panorama_scripting_in_a_nutshell
     let project_pto = tmp_dir.path().join("project.pto");
+    // It is important to use rectilinear projection and very narrow field
+    // of view because otherwise Hugin will try to correct distortion in the
+    // pictures, which is not desirable when we stitch film scans.
     hugin::pto_gen(&project_pto, &input_tiffs, ["--projection=0", "--fov=1"]);
     hugin::cpfind(&project_pto, ["--multirow", "--celeste"]);
     hugin::cpclean(&project_pto, Vec::<&str>::from([]));
@@ -53,7 +60,7 @@ fn main() {
             "--canvas=AUTO",
             "--crop=AUTO",
             "--blender=ENBLEND",
-            "--ldr-compression=DEFLATE", // better than LZW
+            "--ldr-compression=DEFLATE", // compresses better than LZW
         ],
     );
     let output_filename = output_filename();

@@ -1,8 +1,12 @@
+//! Rudimentary wrapper around `libraw` that allows us to load files in
+//! formats that digital cameras produce and then save them as TIFF.
+
 use libc::{c_char, c_int, c_uint};
 use std::ffi::CString;
 use std::os::unix::ffi::OsStrExt;
 use std::path::Path;
 
+/// An image in RAW format.
 pub struct RawImage {
     libraw_data: *const LibRawData,
 }
@@ -14,6 +18,7 @@ struct LibRawData {
 }
 
 impl RawImage {
+    /// Create a new `RawImage` by loading it from a file.
     pub fn new(filename: &Path) -> RawImage {
         let filename_cstring = CString::new(filename.as_os_str().as_bytes()).unwrap();
         let filename_str = filename.to_str().unwrap();
@@ -37,6 +42,7 @@ impl RawImage {
         result
     }
 
+    /// Save the given RAW image as a TIFF file.
     pub fn save_tiff(&self, filename: &Path) {
         let filename_cstring = CString::new(filename.as_os_str().as_bytes()).unwrap();
         let filename_str = filename.to_str().unwrap();

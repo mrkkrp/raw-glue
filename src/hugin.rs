@@ -1,3 +1,6 @@
+//! This module contains functions for calling various binaries from the
+//! Hugin suite of utilities for panorama stitching.
+
 use std::ffi::OsStr;
 use std::fs;
 use std::path::{Path, PathBuf};
