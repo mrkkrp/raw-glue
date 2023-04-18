@@ -104,10 +104,11 @@ where
     });
     let what_hugin_creates = project_pto_parent.join("result.tif");
     let error_message = format!(
-        "failed to rename {:?} into {:?}",
-        what_hugin_creates, output
+        "failed to copy {} to {}",
+        what_hugin_creates.display(),
+        output.display()
     );
-    fs::rename(what_hugin_creates, output).expect(&error_message)
+    fs::copy(what_hugin_creates, output).expect(&error_message);
 }
 
 /// Run an executable `executable` in a given `working_dir`. Stream `stdout`
