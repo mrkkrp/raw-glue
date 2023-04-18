@@ -4,6 +4,7 @@ use clap_derive::Parser;
 use raw_glue::hugin;
 use raw_glue::libraw::RawImage;
 use rayon::prelude::*;
+use std::fmt::Display;
 use std::path::{Path, PathBuf};
 use std::{env, process};
 use tempfile::{Builder, TempDir};
@@ -18,19 +19,16 @@ struct Args {
 fn main() {
     let args = Args::parse();
     if args.inputs.is_empty() {
-        eprintln!("error: at least one input file must be provided");
+        eprintln!("Error: at least one input file must be provided");
         process::exit(1);
     }
     // A temporary directory is useful for both storing temporary TIFF
     // versions of the source images and as the working directory for
     // calling Hugin tools later.
-    let tmp_dir: TempDir = match Builder::new().prefix("raw-glue").tempdir() {
-        Err(_) => {
-            eprintln!("error: at least one input file must be provided");
-            process::exit(1)
-        }
-        Ok(x) => x,
-    };
+    let tmp_dir: TempDir = Builder::new()
+        .prefix("raw-glue")
+        .tempdir()
+        .unwrap_or_else(report_stderr_and_exit);
     // Convert to TIFF in parallel.
     let input_tiffs: Vec<PathBuf> = args
         .inputs
@@ -38,9 +36,11 @@ fn main() {
         .enumerate()
         .map(|(index, input)| {
             let input_path = Path::new(input);
-            let raw_image = RawImage::new(input_path);
+            let raw_image = RawImage::new(input_path).unwrap_or_else(report_stderr_and_exit);
             let output_path = tmp_dir.path().join(index.to_string() + ".tiff");
-            raw_image.save_tiff(&output_path);
+            raw_image
+                .save_tiff(&output_path)
+                .unwrap_or_else(report_stderr_and_exit);
             output_path
         })
         .collect();
@@ -65,6 +65,13 @@ fn main() {
     );
     let output_filename = output_filename();
     hugin::executor(&project_pto, &output_filename, ["--stitching"])
+}
+
+/// Report the given error on `stderr` using its `Display` trait and exit
+/// with the status code 1.
+fn report_stderr_and_exit<E: Display, T>(e: E) -> T {
+    eprintln!("Error: {}", e);
+    process::exit(1)
 }
 
 /// Generate name for the output `.tiff` file based on current local time.
