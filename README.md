@@ -6,7 +6,7 @@ This is a command line utility that allows us to stitch multiple RAW files
 together in a completely automatic manner. It is designed to be useful for
 stitching of overlapping shots of a film negative done with a digital
 camera + macro lens on a copy stand. For that reason it assumes rectilinear
-projection and extremely narrow field of view.
+projection and an extremely narrow field of view.
 
 Here is an example of invocation:
 
