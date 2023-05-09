@@ -29,6 +29,14 @@ fn main() {
         eprintln!("Error: at least one input file must be provided");
         process::exit(1);
     }
+    let group_size = args.group_by.unwrap_or(args.inputs.len());
+    for group in args.inputs.chunks(group_size) {
+        process_group(group, args.delete_sources)
+    }
+}
+
+/// Process a single group of inputs.
+fn process_group(inputs: &[String], delete_sources: bool) {
     // A temporary directory is useful for both storing temporary TIFF
     // versions of the source images and as the working directory for
     // calling Hugin tools later.
@@ -36,14 +44,6 @@ fn main() {
         .prefix("raw-glue")
         .tempdir()
         .unwrap_or_else(report_stderr_and_exit);
-    let group_size = args.group_by.unwrap_or(args.inputs.len());
-    for group in args.inputs.chunks(group_size) {
-        process_group(group, &tmp_dir, args.delete_sources)
-    }
-}
-
-/// Process a single group of inputs.
-fn process_group(inputs: &[String], tmp_dir: &TempDir, delete_sources: bool) {
     // Convert to TIFF in parallel.
     let input_tiffs: Vec<PathBuf> = inputs
         .par_iter()
