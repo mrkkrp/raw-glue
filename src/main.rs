@@ -5,6 +5,7 @@ use raw_glue::hugin;
 use raw_glue::libraw::RawImage;
 use rayon::prelude::*;
 use std::fmt::Display;
+use std::fs;
 use std::path::{Path, PathBuf};
 use std::{env, process};
 use tempfile::{Builder, TempDir};
@@ -14,6 +15,9 @@ use tempfile::{Builder, TempDir};
 struct Args {
     /// Input files in any libraw-compatible formats
     inputs: Vec<String>,
+    /// Delete source images upon successful completion
+    #[arg(short, long)]
+    delete_sources: bool,
 }
 
 fn main() {
@@ -64,7 +68,12 @@ fn main() {
         ],
     );
     let output_filename = output_filename();
-    hugin::executor(&project_pto, &output_filename, ["--stitching"])
+    hugin::executor(&project_pto, &output_filename, ["--stitching"]);
+    if args.delete_sources {
+        for input in args.inputs {
+            fs::remove_file(input).unwrap_or_else(report_stderr_and_exit)
+        }
+    }
 }
 
 /// Report the given error on `stderr` using its `Display` trait and exit
