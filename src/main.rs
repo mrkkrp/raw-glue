@@ -18,6 +18,9 @@ struct Args {
     /// Delete source images upon successful completion
     #[arg(short, long)]
     delete_sources: bool,
+    /// Produce several outputs by grouping inputs by N
+    #[arg(short, long, value_name = "N")]
+    group_by: Option<usize>,
 }
 
 fn main() {
@@ -33,9 +36,16 @@ fn main() {
         .prefix("raw-glue")
         .tempdir()
         .unwrap_or_else(report_stderr_and_exit);
+    let group_size = args.group_by.unwrap_or(args.inputs.len());
+    for group in args.inputs.chunks(group_size) {
+        process_group(group, &tmp_dir, args.delete_sources)
+    }
+}
+
+/// Process a single group of inputs.
+fn process_group(inputs: &[String], tmp_dir: &TempDir, delete_sources: bool) {
     // Convert to TIFF in parallel.
-    let input_tiffs: Vec<PathBuf> = args
-        .inputs
+    let input_tiffs: Vec<PathBuf> = inputs
         .par_iter()
         .enumerate()
         .map(|(index, input)| {
@@ -69,8 +79,8 @@ fn main() {
     );
     let output_filename = output_filename();
     hugin::executor(&project_pto, &output_filename, ["--stitching"]);
-    if args.delete_sources {
-        for input in args.inputs {
+    if delete_sources {
+        for input in inputs {
             fs::remove_file(input).unwrap_or_else(report_stderr_and_exit)
         }
     }
