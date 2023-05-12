@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 /// Create a new `.pto` file `project_pto` by running `pto_gen`.
-pub fn pto_gen<I, S>(project_pto: &Path, input_tiffs: &Vec<PathBuf>, args: I)
+pub fn pto_gen<I, S>(project_pto: &Path, input_tiffs: &[PathBuf], args: I)
 where
     I: IntoIterator<Item = S>,
     S: AsRef<OsStr>,
