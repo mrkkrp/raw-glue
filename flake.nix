@@ -1,37 +1,31 @@
 {
+  description = "A CLI utility for automatic stitching of digital negatives";
+
   inputs = {
-    nixpkgs.url = "nixpkgs/nixos-unstable";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     flake-utils.url = "github:numtide/flake-utils";
     rust-overlay = {
       url = "github:oxalica/rust-overlay";
       inputs.nixpkgs.follows = "nixpkgs";
-      inputs.flake-utils.follows = "flake-utils";
     };
-    crane = {
-      url = "github:ipetkov/crane";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
+    crane.url = "github:ipetkov/crane";
   };
 
   outputs = { self, nixpkgs, flake-utils, rust-overlay, crane }:
-    flake-utils.lib.eachSystem ["aarch64-linux" "x86_64-linux"] (system:
+    flake-utils.lib.eachDefaultSystem (system:
       let
-        overlays = [ (import rust-overlay) ];
         pkgs = import nixpkgs {
-          inherit system overlays;
+          inherit system;
+          overlays = [ (import rust-overlay) ];
         };
-        rustToolchain = pkgs.rust-bin.stable.latest.minimal.override {
-          extensions = [
-            "rust-src"
-            "rust-analysis"
-            "rustfmt"
-            "clippy"
-          ];
+        rustToolchain = pkgs.rust-bin.stable.latest.default.override {
+          extensions = [ "rust-src" "rustfmt" "clippy" ];
         };
-        craneLib = crane.lib.${system}.overrideToolchain rustToolchain;
+        craneLib = (crane.mkLib pkgs).overrideToolchain rustToolchain;
         src = craneLib.cleanCargoSource ./.;
         commonArgs = {
           inherit src;
+          strictDeps = true;
           buildInputs = [
             pkgs.hugin
             pkgs.libraw.dev
@@ -40,13 +34,15 @@
             pkgs.pkg-config
           ];
         };
+        # Build only the dependencies once so they can be reused across the
+        # package build and every check.
         cargoArtifacts = craneLib.buildDepsOnly commonArgs;
-        my-crate = craneLib.buildPackage (commonArgs // {
+        rawGlue = craneLib.buildPackage (commonArgs // {
           inherit cargoArtifacts;
         });
-        my-crate-wrapped = pkgs.symlinkJoin {
+        rawGlueWrapped = pkgs.symlinkJoin {
           name = "raw-glue";
-          paths = [ my-crate ];
+          paths = [ rawGlue ];
           buildInputs = [ pkgs.makeWrapper ];
           postBuild = ''
             wrapProgram $out/bin/raw-glue \
@@ -56,24 +52,31 @@
       in
       {
         checks = {
-          my-crate-clippy = craneLib.cargoClippy (commonArgs // {
+          inherit rawGlue;
+          rawGlue-clippy = craneLib.cargoClippy (commonArgs // {
             inherit cargoArtifacts;
             cargoClippyExtraArgs = "--all-targets -- --deny warnings";
           });
-          my-crate-doc = craneLib.cargoDoc (commonArgs // {
+          rawGlue-doc = craneLib.cargoDoc (commonArgs // {
             inherit cargoArtifacts;
           });
-          my-crate-fmt = craneLib.cargoFmt {
+          rawGlue-fmt = craneLib.cargoFmt {
             inherit src;
           };
+          rawGlue-nextest = craneLib.cargoNextest (commonArgs // {
+            inherit cargoArtifacts;
+            partitions = 1;
+            partitionType = "count";
+            cargoNextestExtraArgs = "--no-tests=pass";
+          });
         };
-        packages.default = my-crate-wrapped;
+        packages.default = rawGlueWrapped;
         apps.default = flake-utils.lib.mkApp {
-          drv = my-crate-wrapped;
+          drv = rawGlueWrapped;
         };
-        devShells.default = pkgs.mkShell {
-          inputsFrom = builtins.attrValues self.checks.${system};
-          buildInputs = [
+        devShells.default = craneLib.devShell {
+          checks = self.checks.${system};
+          packages = [
             pkgs.rust-analyzer
           ];
         };
